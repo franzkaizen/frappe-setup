@@ -1,0 +1,35 @@
+name: Build Frappe Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          APPS_JSON_BASE64=$(base64 -w 0 apps.json)
+          docker build \
+            --build-arg=FRAPPE_PATH=https://github.com/frappe/frappe \
+            --build-arg=FRAPPE_BRANCH=version-15 \
+            --build-arg=APPS_JSON_BASE64=${APPS_JSON_BASE64} \
+            --tag=ghcr.io/${{ github.repository }}:latest \
+            --file=images/layered/Containerfile \
+            https://github.com/frappe/frappe_docker.git
+          docker push ghcr.io/${{ github.repository }}:latest
